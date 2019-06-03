@@ -1,0 +1,406 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>user guider list</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
+        <link rel="stylesheet" href="/css/ui.css">
+        <link type="text/css" rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/jsgrid/1.5.3/jsgrid.min.css" />
+        <link type="text/css" rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/jsgrid/1.5.3/jsgrid-theme.min.css" />
+
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jsgrid/1.5.3/jsgrid.min.js"></script>
+        
+    </head>
+    <body>
+
+    <header>
+        <div><a href="/main/">메인페이지</a></div>
+        <div><a href="/logout">logout</a></div>
+    </header>
+
+    <h1>길안내 API 관리화면</h1>
+
+    
+    <section class="showWrap">  
+        <div id="cattery" style="display:none;">
+            <form action="" method="post" id="update_form" name="update_form">
+                <div>id :<input type="text" name="id"></div>
+                <div>시나리오 :<input type="text" name="sno"></div>
+                <div>출입구 :<input type="text" name="gno"></div>
+                <div>순서 : <input type="text" name="order_no"></div>
+                <div>상태 : <input type="text" name="state"></div>
+                <div> 메세지 : <input type="text" name="msg" > </div>
+                <div> 이미지 : <input type="text" name="img_nm"> </div>
+            </form>
+        </div>
+    </section>
+
+    <div id="log"></div>
+<div id="jsGrid"></div>
+
+
+<script>
+var scroll_position = 0;
+var hostUrl = "http://192.168.0.14:3000"; //http://15.164.100.147:3000
+var data2;
+var update_item = {};
+    function datagrid(data){
+        var state_orders = [{
+            Name: "비활성",
+            Id: 0
+        },
+        {
+            Name: "활성",
+            Id: 1
+        }
+    ];
+
+    var imgname_orders = [{
+            Name: "좌측 꺽는 길",
+            Id: "icon_l2_left.png"
+        },
+        {
+            Name: "좌삼거리 좌회전",
+            Id: "icon_l3_left.png"
+        },
+        {
+            Name: "좌삼거리 직진",
+            Id: "icon_l3_front.png"
+        },
+        {
+            Name: "우측 껀는길",
+            Id: "icon_r2_right.png"
+        },
+        {
+            Name: "우삼거리 우회전",
+            Id: "icon_r3_right.png"
+        },
+        {
+            Name: "우삼거리 직진",
+            Id: "icon_r3_front.png"
+        },
+        {
+            Name: "사거리 직진",
+            Id: "icon_4_front.png"
+        },
+        {
+            Name: "사거리 우회전",
+            Id: "icon_4_right.png"
+        },
+        {
+            Name: "사거리 좌회전",
+            Id: "icon_4_left.png"
+        },
+        {
+            Name: "음성유도기",
+            Id: "icon_remote.png"
+        },
+        {
+            Name: "화장실",
+            Id: "icon_wc.png"
+        },
+        {
+            Name: "개찰구",
+            Id: "icon_inout.png"
+        },
+        {
+            Name: "계단 UP",
+            Id: "icon_stairs_up.png"
+        },
+        {
+            Name: "계단 Down",
+            Id: "icon_stairs_down.png"
+        },
+        {
+            Name: "엘리베이터",
+            Id: "icon_elevator.png"
+        }
+    ];
+
+    $("#jsGrid").jsGrid({
+        width: "100%",
+        height: "100%",
+
+        //inserting: false,
+        //editing: true,
+        //sorting: true,
+        //paging: true,
+
+        inserting: true,
+        editing: true,
+        sorting: true,
+        paging: true,
+        autoload: true,
+        pageSize: 50,
+
+        data: data,
+
+        editItem: function(item) {
+            var $row = this.rowByItem(item);
+            if ($row.length) {
+                console.log('$row: ' + JSON.stringify($row)); // I modify this
+                this._editRow($row);
+            }
+        },
+
+        controller: {
+            insertItem: function (item) {
+                //var id = item.id;
+                var sno = item.sno;
+                var gno = item.gno;
+                var order_no = item.order_no;
+                var state = item.state;
+                var msg = item.msg;
+                var img_nm = item.img_nm;
+                
+                var ctype;
+                var dtype;
+                var action='insert';
+
+                console.log('insert sno:'+sno+' gno:'+gno+' order_no: '+order_no+' state: ' + state + 'msg : '+msg);
+
+                //$('#update_form [name="id"]').val(id);
+                $('#update_form [name="sno"]').val(sno);
+                $('#update_form [name="gno"]').val(gno);
+                $('#update_form [name="order_no"]').val(order_no);
+                $('#update_form [name="state"]').val(state);
+                $('#update_form [name="msg"]').val(msg);
+                $('#update_form [name="img_nm"]').val(img_nm);
+
+                let options = [].slice.call(document.forms[0].elements);
+                    console.log(options);
+                    data2 = options.reduce(function(pre,next) {
+                        pre[next.name] = next.value;
+                        return pre;
+                    }, {});
+                    if(data2) {
+                        data2 = JSON.stringify(data2);
+                        ctype = 'application/json';
+                        dtype = 'json';
+                        //xhr.setRequestHeader('Content-Type', "application/json");
+                    } else { 
+                        data2 = null;
+                        ctype = null;
+                        dtype = null;
+                    }
+                var url = hostUrl+"/user_guider/?_method=POST";
+                ajaxData(url,'POST', data2, ctype,dtype,action);
+            },
+            updateItem: function(item) {
+                var id = item.id;
+                var sno = item.sno;
+                var gno = item.gno;
+                var order_no = item.order_no;
+                var state = item.state;
+                var msg = item.msg;
+                var img_nm = item.img_nm;
+                
+                var ctype;
+                var dtype;
+                var action='update';
+
+                console.log('update sno:'+sno+' gno:'+gno+' order_no: '+order_no+' state: ' + state + 'msg : '+msg);
+
+                $('#update_form [name="id"]').val(id);
+                $('#update_form [name="sno"]').val(sno);
+                $('#update_form [name="gno"]').val(gno);
+                $('#update_form [name="order_no"]').val(order_no);
+                $('#update_form [name="state"]').val(state);
+                $('#update_form [name="msg"]').val(msg);
+                $('#update_form [name="img_nm"]').val(img_nm);
+
+                let options = [].slice.call(document.forms[0].elements);
+                    console.log(options);
+                    data2 = options.reduce(function(pre,next) {
+                        pre[next.name] = next.value;
+                        return pre;
+                    }, {});
+                    if(data2) {
+                        data2 = JSON.stringify(data2);
+                        ctype = 'application/json';
+                        dtype = 'json';
+                        //xhr.setRequestHeader('Content-Type', "application/json");
+                    } else { 
+                        data2 = null;
+                        ctype = null;
+                        dtype = null;
+                    }
+                var url = hostUrl+"/user_guider/?_method=PUT";
+                ajaxData(url,'POST', data2, ctype,dtype,action);
+            },
+            deleteItem: function(item) {
+                var id = item.id;
+                var ctype;
+                var dtype;
+                var action='delete';
+
+                $('#update_form [name="id"]').val(id);
+
+                let options = [].slice.call(document.forms[0].elements);
+                    console.log(options);
+                    data2 = options.reduce(function(pre,next) {
+                        pre[next.name] = next.value;
+                        return pre;
+                    }, {});
+                    if(data2) {
+                        data2 = JSON.stringify(data2);
+                        ctype = 'application/json';
+                        dtype = 'json';
+                        //xhr.setRequestHeader('Content-Type', "application/json");
+                    } else { 
+                        data2 = null;
+                        ctype = null;
+                        dtype = null;
+                    }
+                var url = hostUrl+"/user_guider/?_method=DELETE";
+                ajaxData(url,'POST', data2, ctype,dtype,action);
+            },
+        },
+        
+        fields: [
+            {
+                name: "sno",
+                type: "text",
+                width: 40,
+                validate: "required"
+            },
+            //{
+            //    name: "gno",
+            //    type: "text",
+            //    width: 40,
+            //    validate: "required"
+            //},
+            {
+                name: "order_no",
+                type: "number",
+                width: 40,
+                validate: "required"
+                
+            },
+            {
+                name: "state",
+                type: "select",
+                //items: ["true", "false"],
+                items: state_orders,
+                valueField: "Id",
+                textField: "Name",
+                width: 40,
+                //type: "number", 
+                validate: "required"
+            },
+            {
+                name: "msg",
+                type: "text",
+                width: 150,
+                validate: "required"
+            },
+            {
+                name: "img_nm",
+                type: "select",
+                //items: ["true", "false"],
+                items: imgname_orders,
+                valueField: "Id", 
+                textField: "Name", 
+                width: 40,
+                //type: "number", 
+                validate: "required"
+            },
+            {
+            type: "control"
+            }
+        ]
+    });
+    }
+
+    // 통신 모듈
+    function ajaxData(url, type, data, ctype, dtype, action){
+        $.ajax({
+            url: url,
+            type: type,
+            contentType: ctype,
+            dataType: dtype,
+            data: data
+            
+        }).done((data, textStatus, jqXHR) => {
+            console.log('성공');
+            console.log(data);
+            if(action == 'list'){
+                // 최조 리스트 조회 후
+                clients = data.data;
+                datagrid(clients);
+            } else {
+                setScroll();
+                ajaxData(hostUrl+'/user_guider','GET', null,null,null,'list');
+            }
+            
+            console.log(textStatus);
+            console.log(jqXHR);
+            $("#jsGrid").jsGrid("refresh");
+        }).fail((jqXHR, textStatus, errorThrown) => {
+            console.log('실패');
+            console.log(jqXHR);
+            console.log(textStatus);
+            console.log(errorThrown);
+        }).always((param1, param2, param3) => {
+            console.log('종료');
+            console.log(param1);
+            console.log(param2);
+            console.log(param3);
+            //$("#jsGrid").jsGrid("refresh");
+        }).then((data, textStatus, jqXHR) => {
+            console.log('성공 캐이스')
+        }, (jqXHR, textStatus, errorThrown) => {
+            console.log('실패 캐이스')
+        });
+    }
+
+
+    function getPosition(){
+        var position = $("#jsGrid").jsGrid('scrollposition');
+        console.log('>>> position : ' + position);
+    }
+
+
+    $('.jsgrid-grid-body').scroll(function (item) {
+        var element = '#' + $(item.target).parent().attr('id');
+        if (element === "#CargoOperationTable") {
+        //updateColPos(2, element);
+            alert('1');
+        } else {
+            alert('2');
+        //updateColPos(1, element);
+        }
+    });
+
+
+$(function () {
+    // 등록된 모든 출입구 리스트 
+    ajaxData(hostUrl+'/user_guider','GET', null,null,null,'list');
+
+    
+});
+
+$(window).scroll(function(event) {
+    var scroll = $(window).scrollTop();
+    // Do something
+    log(scroll);
+
+});
+
+function log(str){
+    //$("#log").text(str);
+    scroll_position = str;
+}
+
+function setScroll(){
+    $(window).scrollTop(str);
+}
+ 
+    </script>
+
+    </body>
+</html>
